@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_height="match_parent"
+    android:layout_width="match_parent">
+    <PreferenceCategory
+        android:title="@string/settings_general">
+
+        <ListPreference
+            android:defaultValue="@string/default_unit_type"
+            android:entries="@array/unit_types"
+            android:entryValues="@array/unit_type_values"
+            android:key="@string/unit_type_key"
+            android:title="@string/unit_type"/>
+
+        <ListPreference
+            android:defaultValue="@string/default_route_profile"
+            android:entries="@array/profiles"
+            android:entryValues="@array/profile_values"
+            android:key="@string/route_profile_key"
+            android:title="@string/route_profile"/>
+
+        <ListPreference
+            android:defaultValue="@string/default_locale"
+            android:entries="@array/languages"
+            android:entryValues="@array/language_values"
+            android:key="@string/language_key"
+            android:title="@string/language"/>
+    </PreferenceCategory>
+
+</PreferenceScreen>

@@ -1,0 +1,69 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
+
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+    defaultConfig {
+        applicationId "gr.blackswamp.bmaps"
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        multiDexEnabled true
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables.useSupportLibrary = true
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    buildTypes {
+        debug {
+            buildConfigField 'String', "ApiKey", Mapbox_ApiKey
+            resValue 'string', "api_key", Mapbox_ApiKey
+            testCoverageEnabled = false
+        }
+        release {
+            buildConfigField 'String', "ApiKey", Mapbox_ApiKey
+            resValue 'string', "api_key", Mapbox_ApiKey
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    dexOptions {
+        maxProcessCount 8
+        javaMaxHeapSize "2g"
+        preDexLibraries true
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    // Kotlin
+    implementation deps.kotlin.stdlib
+
+    // Coroutines
+    implementation deps.coroutines.core
+    implementation deps.coroutines.android
+
+    // Support library
+    implementation deps.support.app_compat
+    implementation deps.support.design
+    implementation deps.constraint_layout
+    implementation deps.support.core_ktx
+    implementation deps.support.multidex
+
+    // Architecture components
+    implementation deps.lifecycle.extensions
+    implementation deps.lifecycle.kotlin
+    implementation deps.lifecycle.viewmodel_saved_state
+
+    // Mapbox
+    implementation deps.mapbox.navigation
+    implementation deps.mapbox.sdk
+    implementation deps.mapbox.search
+}

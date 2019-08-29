@@ -1,0 +1,46 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+
+    <style name="AppTheme" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="android:windowFullscreen">true</item>
+        <item name="colorPrimary">@color/primaryColor</item>
+        <item name="colorPrimaryDark">@color/primaryDarkColor</item>
+        <item name="colorPrimaryLight">@color/primaryLightColor</item>
+        <item name="colorPrimaryText">@color/primaryTextColor</item>
+        <item name="colorAccent">@color/secondaryColor</item>
+        <item name="colorAccentDark">@color/secondaryDarkColor</item>
+        <item name="colorAccentLight">@color/secondaryLightColor</item>
+        <item name="colorAccentText">@color/secondaryTextColor</item>
+        <item name="colorPanel" tools:ignore="PrivateResource">@color/cardview_light_background</item>
+        <item name="colorWarn" tools:ignore="PrivateResource">@color/error_color_material_dark</item>
+
+        <item name="navigationViewPrimary">@color/mapbox_navigation_view_color_primary_dark</item>
+        <item name="navigationViewSecondary">@color/mapbox_navigation_view_color_secondary_dark</item>
+        <item name="navigationViewAccent">@color/mapbox_navigation_view_color_accent_dark</item>
+        <item name="navigationViewPrimaryText">@color/mapbox_navigation_view_color_secondary_dark</item>
+        <item name="navigationViewSecondaryText">@color/mapbox_navigation_view_color_accent_text_dark</item>
+        <item name="navigationViewDivider">@color/mapbox_navigation_view_color_divider_dark</item>
+
+        <item name="navigationViewListBackground">@color/mapbox_navigation_view_color_list_background_dark</item>
+
+        <item name="navigationViewBannerBackground">@color/mapbox_navigation_view_color_banner_background_dark</item>
+        <item name="navigationViewBannerPrimaryText">@color/mapbox_navigation_view_color_banner_primary_text_dark</item>
+        <item name="navigationViewBannerSecondaryText">@color/mapbox_navigation_view_color_banner_secondary_text_dark</item>
+        <item name="navigationViewBannerManeuverPrimary">@color/mapbox_navigation_view_color_banner_maneuver_primary_dark</item>
+        <item name="navigationViewBannerManeuverSecondary">@color/mapbox_navigation_view_color_banner_maneuver_secondary_dark</item>
+
+        <item name="navigationViewProgress">@color/mapbox_navigation_view_color_progress_dark</item>
+        <item name="navigationViewProgressBackground">@color/mapbox_navigation_view_color_progress_background_dark</item>
+
+        <item name="navigationViewRouteStyle">@style/NavigationMapRoute</item>
+
+        <item name="navigationViewLocationLayerStyle">@style/NavigationLocationLayerStyle</item>
+
+        <item name="navigationViewDestinationMarker">@drawable/map_marker_dark</item>
+
+        <item name="navigationViewRouteOverviewDrawable">@drawable/ic_route_preview_dark</item>
+
+        <item name="navigationViewMapStyle">@string/navigation_guidance_night</item>
+    </style>
+
+</resources>
