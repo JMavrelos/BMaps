@@ -16,14 +16,13 @@ class App : MultiDexApplication() {
         lateinit var app: App
             private set
         val preferences: IPreferences = Prefs
-        private const val preferenceName ="BMapsPreferences"
     }
 
     override fun onCreate() {
         super.onCreate()
         app = this
         viewModelFactory = ViewModelProvider.AndroidViewModelFactory(this)
-        Prefs.initialize(this, preferenceName)
+        Prefs.initialize(this)
         setupTimber()
         setupMapbox()
 

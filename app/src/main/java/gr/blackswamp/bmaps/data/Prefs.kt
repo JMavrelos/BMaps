@@ -2,6 +2,7 @@ package gr.blackswamp.bmaps.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.preference.PreferenceManager
 import gr.blackswamp.bmaps.R
 
 object Prefs : IPreferences {
@@ -19,8 +20,8 @@ object Prefs : IPreferences {
         private set
     private const val defaultVoice: Boolean = false
 
-    fun initialize(context: Context, name: String) {
-        preferences = context.getSharedPreferences(name, Context.MODE_PRIVATE)
+    fun initialize(context: Context) {
+        preferences = PreferenceManager.getDefaultSharedPreferences(context)
         UNIT_TYPE_KEY = context.getString(R.string.unit_type_key)
         VOICE_KEY = context.getString(R.string.voice_key)
         PROFILE_KEY = context.getString(R.string.profile_key)
