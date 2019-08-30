@@ -9,6 +9,7 @@ import com.mapbox.services.android.navigation.v5.milestone.Milestone
 import com.mapbox.services.android.navigation.v5.navigation.MapboxNavigation
 import com.mapbox.services.android.navigation.v5.routeprogress.RouteProgress
 import gr.blackswamp.bmaps.data.ViewState
+import gr.blackswamp.bmaps.utils.SingleLiveEvent
 
 interface MainViewModel {
 
@@ -24,8 +25,8 @@ interface MainViewModel {
     fun findRouteTo(point: Point)
     fun startNavigation(mocked: Boolean): Boolean
     fun cancelNavigation()
-    fun bottomSheetStateChanged(newState: Int)
     fun mapReady(mapboxMap: MapboxMap)
     fun newRouteSelected(route: DirectionsRoute)
-
+    fun updateFromPreferences(key: String)
+    val zoomLevel: LiveData<Double>
 }

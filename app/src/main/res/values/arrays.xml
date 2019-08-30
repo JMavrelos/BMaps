@@ -2,7 +2,7 @@
 <resources>
 
     <string-array name="languages">
-        <item>Default for Device</item>
+        <item>@string/device_default</item>
         <item>English</item>
         <item>French</item>
         <item>German</item>
@@ -18,7 +18,7 @@
     </string-array>
 
     <string-array name="unit_types">
-        <item>Default for Device</item>
+        <item>@string/device_default</item>
         <item>Metric</item>
         <item>Imperial</item>
     </string-array>

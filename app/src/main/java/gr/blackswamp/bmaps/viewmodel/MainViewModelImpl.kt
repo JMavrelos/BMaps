@@ -4,7 +4,6 @@ import android.app.Application
 import android.location.Location
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
-import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.mapbox.android.core.location.LocationEngineProvider
 import com.mapbox.android.core.location.LocationEngineRequest
 import com.mapbox.api.directions.v5.models.DirectionsRoute
@@ -16,14 +15,18 @@ import com.mapbox.services.android.navigation.ui.v5.voice.SpeechAnnouncement
 import com.mapbox.services.android.navigation.ui.v5.voice.SpeechPlayerProvider
 import com.mapbox.services.android.navigation.ui.v5.voice.VoiceInstructionLoader
 import com.mapbox.services.android.navigation.v5.location.replay.ReplayRouteLocationEngine
+import com.mapbox.services.android.navigation.v5.milestone.BannerInstructionMilestone
 import com.mapbox.services.android.navigation.v5.milestone.Milestone
 import com.mapbox.services.android.navigation.v5.milestone.VoiceInstructionMilestone
 import com.mapbox.services.android.navigation.v5.navigation.MapboxNavigation
 import com.mapbox.services.android.navigation.v5.routeprogress.RouteProgress
+import gr.blackswamp.bmaps.App
 import gr.blackswamp.bmaps.BuildConfig
 import gr.blackswamp.bmaps.data.ViewState
 import gr.blackswamp.bmaps.ui.callbacks.MainLocationEngineCallback
+import gr.blackswamp.bmaps.utils.SingleLiveEvent
 import okhttp3.Cache
+import timber.log.Timber
 import java.io.File
 import java.util.*
 
@@ -43,17 +46,16 @@ class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel
     override val milestone: MutableLiveData<Milestone> = MutableLiveData()
     override val state = MutableLiveData(ViewState.SHOW_LOCATION)
     override val navigation: MapboxNavigation = MapboxNavigation(getApplication(), BuildConfig.ApiKey)
-
+    override val zoomLevel = SingleLiveEvent<Double>()
     private val locationEngine = LocationEngineProvider.getBestLocationEngine(getApplication())
     private val locationEngineCallback = MainLocationEngineCallback(location)
     internal var primaryRoute: DirectionsRoute? = null
     internal var isOffRoute = false
     internal var isMocked = false
     private val speechPlayer: NavigationSpeechPlayer
-    private val routeFinder: RouteFinder
+    private val routeFinder: RouteFinder = RouteFinder(this, BuildConfig.ApiKey, App.preferences.profile, App.preferences.unitType)
 
     init {
-        routeFinder = RouteFinder(this, BuildConfig.ApiKey, "cycling")
         navigation.locationEngine = locationEngine
         // Initialize the speech player and pass to milestone event listener for instructions
         val english = Locale.US.language
@@ -64,15 +66,33 @@ class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel
         navigation.addMilestoneEventListener(this::milestoneEvent)
         navigation.addProgressChangeListener(this::progressChanged)
         navigation.addOffRouteListener(this::isOffRoute)
+        App.preferences.setListener { updateFromPreferences(it) }
+    }
+
+    override fun updateFromPreferences(key: String) {
+        when (key) {
+            App.preferences.PROFILE_KEY -> routeFinder.profile = App.preferences.profile
+            App.preferences.UNIT_TYPE_KEY -> routeFinder.unitType = App.preferences.unitType
+        }
     }
 
     private fun progressChanged(location: Location, progress: RouteProgress) {
+        val meters = progress.currentLegProgress().currentStepProgress().distanceRemaining()
+        val direction = progress.bannerInstruction()?.primary?.modifier ?: " None"
+        Timber.i("Progress $direction in $meters")
         this.location.value = location
         this.progress.value = progress
     }
 
     @Suppress("UNUSED_PARAMETER")
     private fun milestoneEvent(routeProgress: RouteProgress, instruction: String, milestone: Milestone) {
+        val ms = (milestone as? BannerInstructionMilestone)
+        if (ms != null) {
+            val direction = ms.bannerInstructions?.primary()?.modifier() ?: ""
+            val meters = routeProgress.currentLegProgress().currentStepProgress().distanceRemaining()
+            Timber.i("Directions $direction in $meters")
+        }
+
         this.milestone.value = milestone
         if (milestone is VoiceInstructionMilestone) {
             play(milestone)
@@ -86,6 +106,7 @@ class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel
     }
 
     private fun play(milestone: VoiceInstructionMilestone) {
+        if (!App.preferences.voice) return
         val announcement = SpeechAnnouncement.builder()
             .voiceInstructionMilestone(milestone)
             .build()
@@ -121,7 +142,7 @@ class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel
 
 
     override fun findRouteTo(point: Point) {
-        destination.postValue(point)
+        destination.value = point
         gotoDestination()
     }
 
@@ -139,15 +160,6 @@ class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel
             true
         } else {
             false
-        }
-    }
-
-    override fun bottomSheetStateChanged(newState: Int) {
-        val current = state.value!!
-        if (current == ViewState.SEARCH && newState == BottomSheetBehavior.STATE_COLLAPSED) {
-            state.value = ViewState.SHOW_LOCATION
-        } else if (current == ViewState.SHOW_LOCATION && newState == BottomSheetBehavior.STATE_EXPANDED) {
-            state.value = ViewState.SEARCH
         }
     }
 

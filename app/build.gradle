@@ -56,6 +56,8 @@ dependencies {
     implementation deps.constraint_layout
     implementation deps.support.core_ktx
     implementation deps.support.multidex
+    implementation deps.support.preferences
+    implementation deps.support.preferences_ktx
 
     // Architecture components
     implementation deps.lifecycle.extensions
@@ -66,4 +68,5 @@ dependencies {
     implementation deps.mapbox.navigation
     implementation deps.mapbox.sdk
     implementation deps.mapbox.search
+
 }

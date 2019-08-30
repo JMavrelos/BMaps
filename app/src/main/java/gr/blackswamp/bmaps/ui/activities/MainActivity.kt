@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.view.View
+import android.widget.FrameLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
@@ -31,11 +32,13 @@ import gr.blackswamp.bmaps.App
 import gr.blackswamp.bmaps.R
 import gr.blackswamp.bmaps.data.ViewState
 import gr.blackswamp.bmaps.ui.adapters.AutoCompleteAdapter
-import gr.blackswamp.bmaps.ui.callbacks.AutoCompleteBottomSheetCallback
 import gr.blackswamp.bmaps.utils.hideKeyboard
 import gr.blackswamp.bmaps.viewmodel.MainViewModel
 import gr.blackswamp.bmaps.viewmodel.MainViewModelImpl
 import kotlinx.android.synthetic.main.activity_main.*
+import timber.log.Timber
+import kotlin.math.max
+import kotlin.math.min
 
 class MainActivity : HistoryActivity(), OnMapReadyCallback,
     OnRouteSelectionChangeListener {
@@ -52,6 +55,7 @@ class MainActivity : HistoryActivity(), OnMapReadyCallback,
 
     private var map: NavigationMapboxMap? = null
     private val viewModel: MainViewModel by lazy { ViewModelProvider(this, App.viewModelFactory).get(MainViewModelImpl::class.java) }
+    private lateinit var behavior: BottomSheetBehavior<FrameLayout>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -99,7 +103,9 @@ class MainActivity : HistoryActivity(), OnMapReadyCallback,
     }
 
     override fun onBackPressed() {
-        if (!viewModel.backPressed()) {
+        if (behavior.state == BottomSheetBehavior.STATE_EXPANDED) {
+            behavior.state = BottomSheetBehavior.STATE_COLLAPSED
+        } else if (!viewModel.backPressed()) {
             super.onBackPressed()
         }
     }
@@ -116,7 +122,6 @@ class MainActivity : HistoryActivity(), OnMapReadyCallback,
     private fun setupWith(savedInstanceState: Bundle?) {
         map_view.onCreate(savedInstanceState)
         //update view state
-        updateState(viewModel.state.value!!)
         setUpBottomSheet()
         setUpListeners()
 
@@ -139,16 +144,18 @@ class MainActivity : HistoryActivity(), OnMapReadyCallback,
 
     private fun setUpListeners() {
         autocompleteView.setOnClickListener {
-            if (autocompleteView.text.isNotEmpty()) {
-                autocompleteView.selectAll()
+            if (behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
+                if (autocompleteView.text.isNotEmpty()) {
+                    autocompleteView.selectAll()
+                }
+                behavior.state = BottomSheetBehavior.STATE_EXPANDED
             }
-            BottomSheetBehavior.from(autocompleteCard).state = BottomSheetBehavior.STATE_EXPANDED
         }
         autocompleteView.setAdapter(AutoCompleteAdapter(this))
         autocompleteView.setFeatureClickListener { feature ->
             feature.center()?.let { point ->
                 hideKeyboard()
-                BottomSheetBehavior.from(autocompleteCard).state = BottomSheetBehavior.STATE_COLLAPSED
+                behavior.state = BottomSheetBehavior.STATE_COLLAPSED
                 viewModel.findRouteTo(point)
             }
         }
@@ -160,10 +167,9 @@ class MainActivity : HistoryActivity(), OnMapReadyCallback,
     }
 
     private fun setUpBottomSheet() {
-        val behavior = BottomSheetBehavior.from(autocompleteCard)
+        behavior = BottomSheetBehavior.from(autoCompleteFrame)
         behavior.peekHeight = resources.getDimension(R.dimen.bottom_sheet_peek_height).toInt()
         behavior.state = BottomSheetBehavior.STATE_COLLAPSED
-        behavior.setBottomSheetCallback(AutoCompleteBottomSheetCallback { viewModel.bottomSheetStateChanged(it) })
     }
 
     private fun initialize() {
@@ -172,23 +178,26 @@ class MainActivity : HistoryActivity(), OnMapReadyCallback,
         viewModel.routes.observe(this, Observer { routesFound(it) })
         viewModel.progress.observe(this, Observer { updateProgress(it) })
         viewModel.milestone.observe(this, Observer { updateMilestone(it) })
+        viewModel.zoomLevel.observe(this, Observer {
+            it?.let { changeZoomLevel(it) }
+        })
         map_view.getMapAsync(this)
     }
     //region listeners
 
     @Suppress("UNUSED_PARAMETER")
     private fun showSettings(view: View) {
-//        startActivityForResult(Intent(this, NavigationSettingsActivity::class.java), CHANGE_SETTING_REQUEST_CODE)
+        startActivity(SettingsActivity.getIntent(this))
     }
 
     @Suppress("UNUSED_PARAMETER")
     private fun goToMyLocation(view: View) {
         val location = viewModel.location.value ?: return
-        updateMapCamera(buildCameraUpdateFrom(location), ONE_SECOND)
+        updateMapCamera(buildCameraUpdateFrom(location, DEFAULT_ZOOM), ONE_SECOND)
     }
 
     private fun routesFound(routes: List<DirectionsRoute>?) {
-        if (routes == null || viewModel.state.value != ViewState.NAVIGATE)
+        if (routes == null || viewModel.state.value != ViewState.SHOW_ROUTE)
             return
         map?.drawRoutes(routes)
     }
@@ -208,7 +217,7 @@ class MainActivity : HistoryActivity(), OnMapReadyCallback,
     private fun locationUpdated(location: Location?) {
         location?.let {
             if (viewModel.state.value == ViewState.SHOW_LOCATION)
-                updateMapCamera(buildCameraUpdateFrom(location), TWO_SECONDS)
+                updateMapCamera(buildCameraUpdateFrom(location, null), TWO_SECONDS)
             autocompleteView.updateProximity(location)
             map?.updateLocation(location)
         }
@@ -236,8 +245,9 @@ class MainActivity : HistoryActivity(), OnMapReadyCallback,
     }
 
     private fun updateState(state: ViewState) {
+        Timber.d("new state $state")
         when (state) {
-            ViewState.SEARCH, ViewState.SHOW_LOCATION -> {
+            ViewState.SHOW_LOCATION -> {
                 instructions.retrieveFeedbackButton().hide()
                 instructions.retrieveSoundButton().hide()
                 map?.removeRoute()
@@ -250,9 +260,9 @@ class MainActivity : HistoryActivity(), OnMapReadyCallback,
                 cancel.hide()
                 instructions.visibility = View.INVISIBLE
                 setMapPadding(false)
-                if (state == ViewState.SHOW_LOCATION) {
-                    BottomSheetBehavior.from(autocompleteCard).state = BottomSheetBehavior.STATE_COLLAPSED
-                }
+//                if (state == ViewState.SHOW_LOCATION) {
+                behavior.state = BottomSheetBehavior.STATE_COLLAPSED
+//                }
             }
             ViewState.SHOW_ROUTE -> {
                 map?.clearMarkers()
@@ -261,10 +271,12 @@ class MainActivity : HistoryActivity(), OnMapReadyCallback,
                 my_location.hide()
                 settings.hide()
                 navigate.show()
+                cancel.hide()
                 viewModel.destination.value?.let { destination ->
                     map?.addDestinationMarker(destination)
                     moveCameraToInclude(destination)
                 }
+                behavior.state = BottomSheetBehavior.STATE_COLLAPSED
             }
             ViewState.NAVIGATE -> {
                 map?.showAlternativeRoutes(false)
@@ -276,8 +288,8 @@ class MainActivity : HistoryActivity(), OnMapReadyCallback,
                 instructions.visibility = View.VISIBLE
                 map?.updateLocationLayerRenderMode(RenderMode.GPS)
                 map?.updateCameraTrackingMode(NavigationCamera.NAVIGATION_TRACKING_MODE_GPS)
-                BottomSheetBehavior.from(autocompleteCard).state = BottomSheetBehavior.STATE_HIDDEN
                 setMapPadding(true)
+                behavior.state = BottomSheetBehavior.STATE_HIDDEN
             }
         }
     }
@@ -287,15 +299,24 @@ class MainActivity : HistoryActivity(), OnMapReadyCallback,
     }
 
 
-    private fun buildCameraUpdateFrom(location: Location): CameraUpdate {
-        return CameraUpdateFactory.newCameraPosition(
-            CameraPosition.Builder()
-                .zoom(DEFAULT_ZOOM)
-                .target(LatLng(location.latitude, location.longitude))
-                .bearing(DEFAULT_BEARING)
-                .tilt(DEFAULT_TILT)
-                .build()
-        )
+    private fun buildCameraUpdateFrom(location: Location, zoomLevel: Double?): CameraUpdate {
+//        return CameraUpdateFactory.newCameraPosition(
+//            CameraPosition.Builder()
+//                .zoom(DEFAULT_ZOOM)
+//                .target(LatLng(location.latitude, location.longitude))
+//                .bearing(DEFAULT_BEARING)
+//                .tilt(DEFAULT_TILT)
+//                .build()
+//        )
+        val builder = CameraPosition.Builder()
+            .target(LatLng(location.latitude, location.longitude))
+            .bearing(DEFAULT_BEARING)
+            .tilt(DEFAULT_TILT)
+        if (zoomLevel != null) {
+            builder.zoom(zoomLevel)
+        }
+
+        return CameraUpdateFactory.newCameraPosition(builder.build())
     }
 
     private fun setMapPadding(shown: Boolean) {
@@ -330,5 +351,15 @@ class MainActivity : HistoryActivity(), OnMapReadyCallback,
         mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position), TWO_SECONDS)
     }
 
+    private fun changeZoomLevel(change: Double) {
+        val mapbox = map?.retrieveMap() ?: return
+        val position = mapbox.cameraPosition
+        val newZoom = max(min(position.zoom + change, mapbox.maxZoomLevel), mapbox.minZoomLevel)
+        if (newZoom == position.zoom)
+            return
+        mapbox.cameraPosition =
+            CameraPosition.Builder(position)
+                .zoom(newZoom).build()
+    }
 
 }

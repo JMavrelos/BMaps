@@ -21,7 +21,7 @@ internal class StoreHistoryTask(private val navigation: MapboxNavigation, privat
 
     override fun doInBackground(vararg paramsUnused: Void): Void? {
         if (isExternalStorageWritable) {
-            val history = navigation.retrieveHistory()
+            val history = navigation.retrieveHistory()?:return null
             if (!history.contentEquals(EMPTY_HISTORY)) {
                 val pathToExternalStorage = Environment.getExternalStorageDirectory()
                 val appDirectory = File(pathToExternalStorage.absolutePath + DRIVES_FOLDER)

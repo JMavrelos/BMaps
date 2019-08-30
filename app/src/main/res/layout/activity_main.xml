@@ -32,7 +32,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="top"
-            app:layout_anchor="@+id/autocompleteCard"
+            app:layout_anchor="@+id/autoCompleteFrame"
             app:layout_anchorGravity="top|end">
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -40,13 +40,16 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_margin="@dimen/fab_margin"
+                android:tint="?colorAccentText"
                 app:srcCompat="@drawable/ic_my_location" />
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/navigate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+
                 android:layout_margin="@dimen/fab_margin"
+                android:tint="?colorAccentText"
                 android:visibility="invisible"
                 app:srcCompat="@drawable/ic_navigation" />
 
@@ -55,6 +58,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_margin="@dimen/fab_margin"
+                android:tint="?colorAccentText"
                 android:visibility="invisible"
                 app:srcCompat="@drawable/ic_close" />
 
@@ -66,6 +70,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="@dimen/fab_margin"
+            android:tint="?colorAccentText"
             app:fabSize="mini"
             app:srcCompat="@drawable/ic_settings" />
 
@@ -77,29 +82,41 @@
             android:visibility="invisible"
             tools:visibility="visible" />
 
-        <androidx.cardview.widget.CardView
-            android:id="@+id/autocompleteCard"
+        <FrameLayout
+            android:id="@+id/autoCompleteFrame"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:layout_marginStart="@dimen/margin"
+            android:layout_marginEnd="@dimen/margin"
+            android:background="@drawable/autocomplete_bottomsheet_background"
             android:elevation="@dimen/card_elevation"
-            android:padding="@dimen/padding"
+            android:paddingTop="@dimen/padding"
+            android:paddingBottom="@dimen/padding"
             app:behavior_hideable="true"
-            app:cardCornerRadius="@dimen/card_radius"
-            app:cardUseCompatPadding="true"
+
             app:layout_behavior=".ui.behaviors.AutoCompleteBottomSheetBehavior">
 
-            <com.mapbox.android.search.autocomplete.MapboxAutocompleteView
-                android:id="@+id/autocompleteView"
+            <androidx.cardview.widget.CardView
+
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="@dimen/margin"
-                android:hint="@string/destination"
-                android:inputType="text"
-                android:maxLines="1"
-                android:padding="@dimen/padding" />
+                android:elevation="@dimen/card_elevation"
+                android:padding="@dimen/padding"
+                app:cardCornerRadius="@dimen/card_radius"
+                app:cardUseCompatPadding="true">
 
-        </androidx.cardview.widget.CardView>
+                <com.mapbox.android.search.autocomplete.MapboxAutocompleteView
+                    android:id="@+id/autocompleteView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="@dimen/margin"
+                    android:hint="@string/destination"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:padding="@dimen/padding" />
 
+            </androidx.cardview.widget.CardView>
+        </FrameLayout>
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
 </FrameLayout>
