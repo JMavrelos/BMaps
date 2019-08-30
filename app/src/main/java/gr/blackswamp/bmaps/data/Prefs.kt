@@ -27,7 +27,7 @@ object Prefs : IPreferences {
         PROFILE_KEY = context.getString(R.string.profile_key)
 
         defaultProfile = context.getString(R.string.default_route_profile)
-        defaultUnitType = context.getString(R.string.device_default)
+        defaultUnitType = context.getString(R.string.default_unit_type)
 
     }
 

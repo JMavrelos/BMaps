@@ -8,10 +8,7 @@
     <string name="voice">Navigation Voice</string>
     <string name="language">Language</string>
 
-    <string name="device_default">Default for Device</string>
-
-    <string name="default_unit_type" translatable="false">default_for_device</string>
-    <string name="default_locale" translatable="false">default_for_device</string>
+    <string name="default_unit_type" translatable="false">metric</string>
     <string name="default_route_profile">driving-traffic</string>
 
     <string name="unit_type_key" translatable="false">UNIT_TYPE_KEY</string>
