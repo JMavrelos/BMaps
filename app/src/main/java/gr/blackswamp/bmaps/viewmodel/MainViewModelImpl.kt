@@ -1,6 +1,10 @@
 package gr.blackswamp.bmaps.viewmodel
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.location.Location
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
@@ -28,6 +32,7 @@ import gr.blackswamp.bmaps.utils.SingleLiveEvent
 import okhttp3.Cache
 import timber.log.Timber
 import java.io.File
+import java.lang.Exception
 import java.util.*
 
 class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel {
@@ -36,37 +41,51 @@ class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel
         private const val FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS: Long = 500
         private const val INSTRUCTION_CACHE = "BMaps-navigation-instruction-cache"
         private const val TEN_MEGABYTE_CACHE_SIZE: Long = 10 * 1024 * 1024
-
+        private const val COMMAND_ACTION = "gr.blackswamp.bmaps.NEW_COMMAND"
+        private const val COMMAND_ZOOM = "CHANGE_ZOOM"
     }
 
+    private val app get() = getApplication<Application>()
     override val destination: MutableLiveData<Point> = MutableLiveData()
     override val location = MutableLiveData<Location>()
     override val routes: MutableLiveData<List<DirectionsRoute>> = MutableLiveData()
     override val progress: MutableLiveData<RouteProgress> = MutableLiveData()
     override val milestone: MutableLiveData<Milestone> = MutableLiveData()
     override val state = MutableLiveData(ViewState.SHOW_LOCATION)
-    override val navigation: MapboxNavigation = MapboxNavigation(getApplication(), BuildConfig.ApiKey)
+    override val navigation: MapboxNavigation = MapboxNavigation(app, BuildConfig.ApiKey)
     override val zoomLevel = SingleLiveEvent<Double>()
-    private val locationEngine = LocationEngineProvider.getBestLocationEngine(getApplication())
+    private val locationEngine = LocationEngineProvider.getBestLocationEngine(app)
     private val locationEngineCallback = MainLocationEngineCallback(location)
     internal var primaryRoute: DirectionsRoute? = null
     internal var isOffRoute = false
     internal var isMocked = false
+    private var mNavigationDistance: Double = 0.0
+    private var mNavigationDirection: String = ""
     private val speechPlayer: NavigationSpeechPlayer
     private val routeFinder: RouteFinder = RouteFinder(this, BuildConfig.ApiKey, App.preferences.profile, App.preferences.unitType)
+
+    private val mCommandReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            newCommand(intent ?: return)
+        }
+    }
+
 
     init {
         navigation.locationEngine = locationEngine
         // Initialize the speech player and pass to milestone event listener for instructions
         val english = Locale.US.language
-        val cache = Cache(File(getApplication<Application>().cacheDir, INSTRUCTION_CACHE), TEN_MEGABYTE_CACHE_SIZE)
-        val voiceInstructionLoader = VoiceInstructionLoader(getApplication(), BuildConfig.ApiKey, cache)
-        val speechPlayerProvider = SpeechPlayerProvider(getApplication(), english, true, voiceInstructionLoader)
+        val cache = Cache(File(app.cacheDir, INSTRUCTION_CACHE), TEN_MEGABYTE_CACHE_SIZE)
+        val voiceInstructionLoader = VoiceInstructionLoader(app, BuildConfig.ApiKey, cache)
+        val speechPlayerProvider = SpeechPlayerProvider(app, english, true, voiceInstructionLoader)
         speechPlayer = NavigationSpeechPlayer(speechPlayerProvider)
         navigation.addMilestoneEventListener(this::milestoneEvent)
         navigation.addProgressChangeListener(this::progressChanged)
         navigation.addOffRouteListener(this::isOffRoute)
         App.preferences.setListener { updateFromPreferences(it) }
+        val intentFilter = IntentFilter(COMMAND_ACTION)
+        app.registerReceiver(mCommandReceiver, intentFilter)
+
     }
 
     override fun updateFromPreferences(key: String) {
@@ -76,12 +95,35 @@ class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel
         }
     }
 
+    private fun newCommand(intent: Intent) {
+        try {
+            if (intent.extras?.containsKey(COMMAND_ZOOM) == true) {
+                val change = intent.extras?.getDouble(COMMAND_ZOOM)
+                Timber.d("Command for zoom change $change")
+                zoomLevel.postValue(change)
+
+            }
+        } catch (e: Exception) {
+            Timber.e(e)
+        }
+
+    }
+
+
     private fun progressChanged(location: Location, progress: RouteProgress) {
-        val meters = progress.currentLegProgress().currentStepProgress().distanceRemaining()
-        val direction = progress.bannerInstruction()?.primary?.modifier ?: " None"
-        Timber.i("Progress $direction in $meters")
+        mNavigationDistance = progress.currentLegProgress().currentStepProgress().distanceRemaining()
+        mNavigationDirection = progress.bannerInstruction()?.primary?.modifier ?: mNavigationDirection
+        Timber.i("Progress $mNavigationDirection in $mNavigationDistance")
         this.location.value = location
         this.progress.value = progress
+        broadcastInstructions()
+    }
+
+    private fun broadcastInstructions() {
+        val intent = Intent(App.NAVIGATION_INSTRUCTIONS)
+            .putExtra(App.NAVIGATION_INSTRUCTIONS_DIRECTIONS, mNavigationDirection)
+            .putExtra(App.NAVIGATION_INSTRUCTIONS_DISTANCE, mNavigationDistance)
+        app.sendBroadcast(intent)
     }
 
     @Suppress("UNUSED_PARAMETER")
@@ -119,6 +161,8 @@ class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel
     }
 
     override fun startNavigation(mocked: Boolean): Boolean {
+        mNavigationDirection = ""
+        mNavigationDistance = -1.0
         val route = primaryRoute ?: return false
         state.value = ViewState.NAVIGATE
         isMocked = mocked
@@ -149,6 +193,7 @@ class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel
     private fun gotoDestination() {
         location.value?.let { location ->
             destination.value?.let { destination ->
+
                 routeFinder.findRoute(location, destination)
             }
         }
@@ -189,6 +234,7 @@ class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel
         navigation.onDestroy()
         speechPlayer.onDestroy()
         enableLocationUpdates(false)
+        app.unregisterReceiver(mCommandReceiver)
     }
 }
 
