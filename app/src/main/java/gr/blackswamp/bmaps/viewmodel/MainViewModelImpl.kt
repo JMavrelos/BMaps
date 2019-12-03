@@ -37,6 +37,7 @@ import java.util.*
 
 class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel {
     companion object {
+        private const val DISTANCE_THRESHOLD = 10.0
         private const val UPDATE_INTERVAL_IN_MILLISECONDS: Long = 1000
         private const val FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS: Long = 500
         private const val INSTRUCTION_CACHE = "BMaps-navigation-instruction-cache"
@@ -61,6 +62,7 @@ class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel
     internal var isMocked = false
     private var mNavigationDistance: Double = 0.0
     private var mNavigationDirection: String = ""
+    private var mDistanceRemaining: Double = 0.0
     private val speechPlayer: NavigationSpeechPlayer
     private val routeFinder: RouteFinder = RouteFinder(this, BuildConfig.ApiKey, App.preferences.profile, App.preferences.unitType)
 
@@ -113,18 +115,32 @@ class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel
     private fun progressChanged(location: Location, progress: RouteProgress) {
         mNavigationDistance = progress.currentLegProgress().currentStepProgress().distanceRemaining()
         mNavigationDirection = progress.bannerInstruction()?.primary?.modifier ?: mNavigationDirection
+        mDistanceRemaining = progress.distanceRemaining()
         Timber.i("Progress $mNavigationDirection in $mNavigationDistance")
         this.location.value = location
         this.progress.value = progress
         broadcastInstructions()
+        if (mDistanceRemaining < DISTANCE_THRESHOLD) {
+            broadcastRouteEnd()
+            cancelNavigation()
+        }
     }
 
     private fun broadcastInstructions() {
         val intent = Intent(App.NAVIGATION_INSTRUCTIONS)
             .putExtra(App.NAVIGATION_INSTRUCTIONS_DIRECTIONS, mNavigationDirection)
             .putExtra(App.NAVIGATION_INSTRUCTIONS_DISTANCE, mNavigationDistance)
+        Timber.d("Sending directions: $mNavigationDirection distance: $mNavigationDistance")
         app.sendBroadcast(intent)
     }
+
+    private fun broadcastRouteEnd() {
+        val intent = Intent(App.NAVIGATION_INSTRUCTIONS)
+            .putExtra(App.NAVIGATION_INSTRUCTIONS_DESTINATION_REACHED,"")
+        Timber.d("Sending route end")
+        app.sendBroadcast(intent)
+    }
+
 
     @Suppress("UNUSED_PARAMETER")
     private fun milestoneEvent(routeProgress: RouteProgress, instruction: String, milestone: Milestone) {
@@ -163,6 +179,7 @@ class MainViewModelImpl(app: Application) : AndroidViewModel(app), MainViewModel
     override fun startNavigation(mocked: Boolean): Boolean {
         mNavigationDirection = ""
         mNavigationDistance = -1.0
+        mDistanceRemaining = -1.0
         val route = primaryRoute ?: return false
         state.value = ViewState.NAVIGATE
         isMocked = mocked

@@ -14,6 +14,7 @@ class App : MultiDexApplication() {
         const val NAVIGATION_INSTRUCTIONS = "gr.blackswamp.bmaps.NAVIGATION"
         const val NAVIGATION_INSTRUCTIONS_DISTANCE = "gr.blackswamp.bmaps.NAVIGATION.DISTANCE"
         const val NAVIGATION_INSTRUCTIONS_DIRECTIONS = "gr.blackswamp.bmaps.NAVIGATION.DIRECTIONS"
+        const val NAVIGATION_INSTRUCTIONS_DESTINATION_REACHED = "gr.blackswamp.bmaps.NAVIGATION.DESTINATION_REACHED"
 
         lateinit var viewModelFactory: ViewModelProvider.Factory
             private set
